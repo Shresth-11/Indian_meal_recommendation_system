@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Nutritionist Meal Planner</title>
+    <meta name="description"
+        content="FitFeast uses a 4-agent AI system powered by Groq to generate personalized 7-day Indian meal plans based on your health profile and medical reports.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f3f3f3;
+            color: #000;
+        }
+
+        /* Header */
+        header {
+            background-color: #2b3f1d;
+            color: white;
+            padding: 10px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        nav a {
+            color: #fff;
+            margin: 0 15px;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        /* hero */
+        .hero {
+            background: url('https://images.pexels.com/photos/14691481/pexels-photo-14691481.png?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center/cover;
+            height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            position: relative;
+            padding-left: 220px;
+            color: #fff;
+            image-rendering: auto;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .hero-content {
+            position: relative;
+            max-width: 600px;
+            z-index: 1;
+        }
+
+        .hero-content h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .hero-content h3 {
+            font-style: italic;
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .hero-content p {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background-color: #8bc34a;
+            color: #fff;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #689f38;
+        }
+
+        .info-section {
+            background-color: #f0ffbd;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 10%;
+            min-height: 100vh;
+            flex-wrap: wrap;
+        }
+
+        .info-text {
+            flex: 1;
+            padding-right: 20px;
+            max-width: 50%;
+        }
+
+        .info-text h2 {
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .info-text p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .read-more-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            color: #000;
+            text-decoration: none;
+            font-weight: bold;
+            border: 2px solid #000;
+            border-radius: 30px;
+            position: relative;
+        }
+
+        .read-more-btn:hover {
+            background-color: #e0f0a1;
+        }
+
+        .read-more-btn::after {
+            content: "→";
+            position: absolute;
+            right: 15px;
+        }
+
+        .info-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .info-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Meet Our Team Section */
+        .social-icons {
+            display: flex;
+            justify-content: space-evenly;
+        }
+
+        .social-icons svg {
+            height: 20px;
+            width: 20px;
+        }
+
+        .team-section {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .team-section h2 {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .team-container {
+            display: flex;
+            justify-content: center;
+            gap: 150px;
+            flex-wrap: wrap;
+        }
+
+        .team-card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            padding: 20px;
+            max-width: 250px;
+            transition: transform 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .team-card img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            object-fit: cover;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .team-card h3 {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .team-card p {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .team-card .role {
+            font-weight: bold;
+            color: #8bc34a;
+            margin-bottom: 10px;
+        }
+
+        .team-card .social-icons a {
+            text-decoration: none;
+            color: #666;
+            font-size: 1.2rem;
+            margin: 0 5px;
+        }
+
+        .team-card .social-icons a:hover {
+            color: #8bc34a;
+        }
+
+        /* ── PDF Upload ──────────────────────────────────────────────── */
+        .pdf-upload-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            position: relative;
+            background: #f9fafb;
+        }
+
+        .pdf-upload-zone:hover,
+        .pdf-upload-zone.drag-over {
+            border-color: #8bc34a;
+            background: #f4fae8;
+        }
+
+        .pdf-upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .pdf-upload-zone .pdf-icon {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .pdf-upload-zone h3 {
+            font-size: .9rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 3px;
+        }
+
+        .pdf-upload-zone p {
+            font-size: .78rem;
+            color: #9ca3af;
+        }
+
+        .pdf-file-info {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: #f0ffbd;
+            border: 1px solid #a5d05a;
+            border-radius: 6px;
+            padding: 8px 14px;
+            margin-top: 8px;
+        }
+
+        .pdf-file-info.visible {
+            display: flex;
+        }
+
+        .pdf-file-name {
+            font-size: .85rem;
+            font-weight: 600;
+            color: #3a6318;
+        }
+
+        .pdf-remove-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .pdf-remove-btn:hover {
+            background: #fee2e2;
+        }
+
+        /* ── Progress Tracker ────────────────────────────────────────── */
+        #progress-tracker {
+            display: none;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .1);
+            padding: 28px 32px;
+            margin-top: 24px;
+        }
+
+        #progress-tracker.visible {
+            display: block;
+        }
+
+        .progress-title {
+            font-size: .95rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #8bc34a;
+            border-radius: 50%;
+            animation: pulse-anim 1.4s infinite;
+        }
+
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            position: relative;
+        }
+
+        .pipeline-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 38px;
+            width: 2px;
+            height: calc(100% - 14px);
+            background: #e5e7eb;
+            transition: background .4s;
+        }
+
+        .pipeline-step.done:not(:last-child)::after {
+            background: #8bc34a;
+        }
+
+        .step-icon-wrap {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem;
+            transition: background .3s, border-color .3s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pipeline-step.active .step-icon-wrap {
+            background: #f0ffbd;
+            border-color: #8bc34a;
+            animation: icon-pulse 1.5s infinite;
+        }
+
+        .pipeline-step.done .step-icon-wrap {
+            background: #8bc34a;
+            border-color: #8bc34a;
+        }
+
+        .pipeline-step.done .step-icon-wrap::after {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: .8rem;
+            font-weight: 700;
+        }
+
+        .step-body {
+            padding: 6px 0 22px;
+        }
+
+        .step-label {
+            font-size: .9rem;
+            font-weight: 600;
+            color: #9ca3af;
+            transition: color .3s;
+        }
+
+        .pipeline-step.active .step-label {
+            color: #3a6318;
+        }
+
+        .pipeline-step.done .step-label {
+            color: #1f2937;
+        }
+
+        .step-desc {
+            font-size: .76rem;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+
+        .step-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .74rem;
+            font-weight: 600;
+            margin-top: 5px;
+            padding: 2px 9px;
+            border-radius: 999px;
+        }
+
+        .step-status.waiting {
+            background: #f3f4f6;
+            color: #9ca3af;
+        }
+
+        .step-status.running {
+            background: #f0ffbd;
+            color: #3a6318;
+        }
+
+        .step-status.done {
+            background: #f0ffbd;
+            color: #3a6318;
+        }
+
+        .step-status.revision {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .mini-spin {
+            width: 9px;
+            height: 9px;
+            border: 1.5px solid rgba(58, 99, 24, .25);
+            border-top-color: #4d7c24;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+
+        .revision-banner {
+            display: none;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 9px 14px;
+            margin: 14px 0 0;
+            font-size: .82rem;
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        .revision-banner.visible {
+            display: block;
+        }
+
+        /* ── Meal Plan Result ────────────────────────────────────────── */
+        .meal-plan-output h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #2b4a12;
+            margin: 28px 0 14px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #d4edda;
+        }
+
+        .meal-plan-output h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #3a6318;
+            margin: 22px 0 10px;
+        }
+
+        .meal-plan-output h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 16px 0 6px;
+        }
+
+        .meal-plan-output h4 {
+            font-size: .9rem;
+            font-weight: 600;
+            color: #4d7c24;
+            margin: 12px 0 4px;
+        }
+
+        .meal-plan-output p {
+            color: #374151;
+            margin-bottom: 8px;
+            line-height: 1.7;
+        }
+
+        .meal-plan-output ul {
+            margin: 6px 0 10px 18px;
+        }
+
+        .meal-plan-output li {
+            color: #374151;
+            margin-bottom: 4px;
+            line-height: 1.6;
+        }
+
+        .meal-plan-output strong {
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: .85rem;
+            color: #92400e;
+        }
+
+        .error-box {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            border-radius: 6px;
+            padding: 14px 18px;
+            color: #991b1b;
+            font-size: .88rem;
+        }
+
+        /* ── Meal Grid — one table per row, stacked ─────────────── */
+        .meal-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* ── Day Table — matches user's image exactly ────────────── */
+        .day-table-wrap {
+            border: 1px solid #333;
+        }
+
+        .day-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Day name header — full-width, bold, centered */
+        .day-table thead tr.day-header th {
+            background: #fff;
+            color: #000;
+            font-size: .95rem;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            padding: 10px 12px;
+            border-bottom: 1px solid #333;
+            letter-spacing: .5px;
+        }
+
+        /* Column sub-header row */
+        .day-table thead tr.col-header th {
+            background: #fff;
+            color: #000;
+            font-weight: 700;
+            font-size: .8rem;
+            padding: 7px 12px;
+            border-bottom: 1px solid #333;
+            text-align: left;
+        }
+
+        /* Data rows */
+        .day-table tbody tr {
+            border-bottom: 1px solid #ccc;
+        }
+
+        .day-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .day-table td {
+            padding: 9px 12px;
+            vertical-align: top;
+        }
+
+        /* Left column — Meal Type */
+        .td-meal {
+            font-weight: 600;
+            color: #000;
+            white-space: nowrap;
+            width: 80px;
+            border-right: 1px solid #ccc;
+        }
+
+        /* Right column — Description */
+        .td-desc {
+            color: #222;
+            font-size: .82rem;
+            line-height: 1.55;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse-anim {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .5;
+                transform: scale(1.35)
+            }
+        }
+
+        @keyframes icon-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(139, 195, 74, .45)
+            }
+
+            70% {
+                box-shadow: 0 0 0 7px rgba(139, 195, 74, 0)
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <header>
+        <h1>FiTFEAST</h1>
+        <nav>
+            <a href="#hero">Home</a>
+            <a href="#info">About</a>
+            <a href="#meal-plan-form">Meal Plan</a>
+            <a href="#team">Team Members</a>
+        </nav>
+    </header>
+
+    <!-- ── Hero ───────────────────────────────────────────────────────── -->
+    <section id="hero" class="hero">
+        <div class="hero-content">
+            <h2>FiTFEAST</h2>
+            <h3>Discover your Pathway</h3>
+            <h3>to a Healthy Life.</h3>
+        </div>
+    </section>
+
+    <!-- ── Info / About ───────────────────────────────────────────────── -->
+    <section id="info" class="info-section">
+        <div class="info-text">
+            <h2>At <strong>FiTFEAST</strong>, I believe that healthy eating should be simple, enjoyable, and
+                personalized for every individual.</h2>
+
+            <p>I developed FiTFEAST as a personalized meal recommendation system to help users make healthier food
+                choices based on their dietary preferences, nutritional requirements, and fitness goals. By combining
+                user-specific inputs with intelligent recommendation techniques, the system generates meal suggestions
+                that support a balanced lifestyle. Whether the goal is improving fitness, maintaining a healthy diet, or
+                exploring nutritious meal options, FiTFEAST provides tailored recommendations to make healthy eating
+                more accessible and convenient.</p>
+
+        </div>
+        <div class="info-text">
+            <h2><strong>PROBLEM STATEMENT</strong></h2>
+            <p>Users face challenges finding suitable recipes due to dietary restrictions, health concerns (e.g.,
+                allergies), and diverse ingredient preparation methods. Recommender systems address this by filtering
+                options based on preferences, nutritional needs, and constraints, making healthy, personalized eating
+                simpler and more convenient.</p>
+            <h2><strong>SOLUTION STATEMENT</strong></h2>
+            <p>FitFeast uses a smart recommender system to provide personalized meal recommendations based on dietary
+                restrictions, health concerns, and lifestyle goals. It simplifies healthy eating by offering recipes
+                that align with individual needs while highlighting the richness of Indian and global cuisines.</p>
+        </div>
+        <div class="info-image">
+            <img src="https://images.pexels.com/photos/7234281/pexels-photo-7234281.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                alt="Healthy Salad Bowl">
+        </div>
+    </section>
+
+    <!-- ── Meal Plan Form Section ──────────────────────────────────────── -->
+    <section>
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <div class="bg-white shadow-md rounded-lg p-8">
+                <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">AI Nutritionist Meal Planner</h1>
+
+                <form id="meal-plan-form" class="space-y-6" novalidate>
+                    <div id="meal-plan-form-anchor"></div>
+
+                    <!-- Age + Gender -->
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">Age</label>
+                            <input type="number" name="age" id="age" required min="10" max="100"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter your age">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">Gender</label>
+                            <select name="gender" id="gender" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Weight + Height -->
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">Weight (kg)</label>
+                            <input type="number" name="weight" id="weight" required min="20" max="300"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter your weight">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">Height (cm)</label>
+                            <input type="number" name="height" id="height" required min="100" max="250"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter your height">
+                        </div>
+                    </div>
+
+                    <!-- Health Condition -->
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Health Condition</label>
+                        <select name="health_condition"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="None">None</option>
+                            <option value="Heart Disease">Heart Disease</option>
+                            <option value="Liver Disease">Liver Disease</option>
+                            <option value="Arthritis">Arthritis</option>
+                            <option value="Kidney Disease">Kidney Disease</option>
+                            <option value="Diabetes">Diabetes</option>
+                            <option value="Asthma">Asthma</option>
+                            <option value="Hypertension">Hypertension</option>
+                            <option value="Obesity">Obesity</option>
+                            <option value="PCOD/PCOS">PCOD/PCOS</option>
+                            <option value="Thyroid Disorder">Thyroid Disorder</option>
+                        </select>
+                    </div>
+
+                    <!-- Allergies -->
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Allergies</label>
+                        <select name="allergies"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="None">None</option>
+                            <option value="Dairy">Dairy</option>
+                            <option value="Sea Food">Sea Food</option>
+                            <option value="Gluten">Gluten</option>
+                            <option value="Eggs">Eggs</option>
+                            <option value="Peanut">Peanut</option>
+                            <option value="Soy">Soy</option>
+                            <option value="Tree Nuts">Tree Nuts</option>
+                        </select>
+                    </div>
+
+                    <!-- Food Preference -->
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Food Preference</label>
+                        <select name="food_preference" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Food Preference</option>
+                            <option value="vegetarian">Vegetarian</option>
+                            <option value="vegan">Vegan</option>
+                            <option value="Non-Vegetarian">Non-Vegetarian</option>
+                        </select>
+                    </div>
+
+                    <!-- PDF Upload (NEW) -->
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">
+                            Medical Report
+                            <span class="text-gray-400 font-normal text-sm ml-1">(Optional PDF — blood tests,
+                                prescriptions, lab reports)</span>
+                        </label>
+                        <div class="pdf-upload-zone" id="pdf-zone">
+                            <input type="file" id="medical_report" name="medical_report" accept=".pdf"
+                                aria-label="Upload medical report PDF">
+                            <span class="pdf-icon">📄</span>
+                            <h3>Click or drag &amp; drop your PDF here</h3>
+                            <p>Max 5 MB · PDF only · Helps AI personalize your plan better</p>
+                        </div>
+                        <div class="pdf-file-info" id="pdf-file-info">
+                            <span class="pdf-file-name" id="pdf-file-name">report.pdf</span>
+                            <button type="button" class="pdf-remove-btn" id="pdf-remove-btn"
+                                aria-label="Remove PDF">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="generate-btn"
+                        class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition duration-300 flex items-center justify-center">
+                        <svg id="loading-spinner" class="hidden animate-spin h-5 w-5 mr-3"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span id="btn-label">Generate Meal Plan</span>
+                    </button>
+                </form>
+
+                <!-- ── Progress Tracker ────────────────────────────────── -->
+                <div id="progress-tracker">
+                    <div class="progress-title">
+                        <div class="pulse-dot"></div>
+                        <span>AI Agents Working...</span>
+                    </div>
+
+                    <div class="revision-banner" id="revision-banner">
+                        🔁 Validator found issues — Agent 3 is revising the meal plan...
+                    </div>
+
+                    <div class="pipeline">
+                        <!-- Step 1 -->
+                        <div class="pipeline-step" id="step-analyzing_medical">
+                            <div class="step-icon-wrap">🔍</div>
+                            <div class="step-body">
+                                <div class="step-label">Medical Report Analyzer</div>
+                                <div class="step-desc">Reading PDF &amp; mapping health markers to Indian dietary
+                                    constraints</div>
+                                <span class="step-status waiting" id="status-analyzing_medical">Waiting</span>
+                            </div>
+                        </div>
+                        <!-- Step 2 -->
+                        <div class="pipeline-step" id="step-calculating_nutrition">
+                            <div class="step-icon-wrap">📊</div>
+                            <div class="step-body">
+                                <div class="step-label">Nutritionist</div>
+                                <div class="step-desc">Calculating BMR, TDEE &amp; macro targets using Indian food
+                                    groups</div>
+                                <span class="step-status waiting" id="status-calculating_nutrition">Waiting</span>
+                            </div>
+                        </div>
+                        <!-- Step 3 -->
+                        <div class="pipeline-step" id="step-generating_plan">
+                            <div class="step-icon-wrap">🍛</div>
+                            <div class="step-body">
+                                <div class="step-label">Meal Plan Generator</div>
+                                <div class="step-desc">Creating 7-day authentic Indian meal plan across regional
+                                    cuisines</div>
+                                <span class="step-status waiting" id="status-generating_plan">Waiting</span>
+                            </div>
+                        </div>
+                        <!-- Step 4 -->
+                        <div class="pipeline-step" id="step-validating_plan">
+                            <div class="step-icon-wrap">🛡️</div>
+                            <div class="step-body">
+                                <div class="step-label">Validator</div>
+                                <div class="step-desc">Checking allergies, medical safety &amp; Indian-only compliance
+                                </div>
+                                <span class="step-status waiting" id="status-validating_plan">Waiting</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Meal Plan Result ─────────────────────────────────── -->
+                <div id="meal-plan-result" class="mt-8 p-6 bg-gray-50 rounded-md" style="display:none;">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800">Your Personalized Meal Plan</h2>
+                    <div id="warning-box" class="warning-box" style="display:none;">
+                        ⚠️ Plan generated with minor warnings — the validator detected some issues after 2 revision
+                        attempts. Please review carefully.
+                    </div>
+                    <div id="meal-plan-content" class="meal-plan-output text-gray-700">
+                        Your meal plan will appear here...
+                    </div>
+                </div>
+
+            </div><!-- /bg-white card -->
+        </div>
+    </section>
+
+
+
+    <!-- ── JavaScript ──────────────────────────────────────────────────── -->
+    <script>
+        (function () {
+            'use strict';
+
+            const form = document.getElementById('meal-plan-form');
+            const generateBtn = document.getElementById('generate-btn');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const btnLabel = document.getElementById('btn-label');
+            const pdfInput = document.getElementById('medical_report');
+            const pdfZone = document.getElementById('pdf-zone');
+            const pdfFileInfo = document.getElementById('pdf-file-info');
+            const pdfFileName = document.getElementById('pdf-file-name');
+            const pdfRemoveBtn = document.getElementById('pdf-remove-btn');
+            const tracker = document.getElementById('progress-tracker');
+            const revBanner = document.getElementById('revision-banner');
+            const resultDiv = document.getElementById('meal-plan-result');
+            const mealContent = document.getElementById('meal-plan-content');
+            const warningBox = document.getElementById('warning-box');
+
+            const STEPS = ['analyzing_medical', 'calculating_nutrition', 'generating_plan', 'validating_plan'];
+
+            /* ── PDF Upload ─────────────────────────────────────────── */
+            pdfInput.addEventListener('change', () => {
+                const file = pdfInput.files[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('PDF must be under 5 MB.');
+                    pdfInput.value = '';
+                    return;
+                }
+                pdfFileName.textContent = file.name;
+                pdfFileInfo.classList.add('visible');
+                pdfZone.style.borderColor = '#8bc34a';
+            });
+
+            pdfRemoveBtn.addEventListener('click', () => {
+                pdfInput.value = '';
+                pdfFileInfo.classList.remove('visible');
+                pdfZone.style.borderColor = '';
+            });
+
+            pdfZone.addEventListener('dragover', e => { e.preventDefault(); pdfZone.classList.add('drag-over'); });
+            pdfZone.addEventListener('dragleave', () => pdfZone.classList.remove('drag-over'));
+            pdfZone.addEventListener('drop', e => {
+                e.preventDefault();
+                pdfZone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'application/pdf') {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    pdfInput.files = dt.files;
+                    pdfInput.dispatchEvent(new Event('change'));
+                }
+            });
+
+            /* ── Progress helpers ───────────────────────────────────── */
+            const stepOrder = {};
+            STEPS.forEach((s, i) => stepOrder[s] = i);
+
+            function resetTracker() {
+                STEPS.forEach(step => {
+                    const el = document.getElementById('step-' + step);
+                    const st = document.getElementById('status-' + step);
+                    el.classList.remove('active', 'done');
+                    st.className = 'step-status waiting';
+                    st.innerHTML = 'Waiting';
+                });
+                revBanner.classList.remove('visible');
+            }
+
+            /* ── Meal Plan Table Renderer ────────────────────────────── */
+            const MEAL_LABELS = {
+                'BREAKFAST': 'Breakfast',
+                'LUNCH': 'Lunch',
+                'SNACKS': 'Snacks',
+                'SNACK': 'Snacks',
+                'DINNER': 'Dinner',
+            };
+
+            function buildDayTable(dayName, mealRows) {
+                const rowsHtml = mealRows.map(r => `
+                <tr>
+                    <td class="td-meal">${r.label}</td>
+                    <td class="td-desc">${r.desc}</td>
+                </tr>`).join('');
+
+                return `
+            <div class="day-table-wrap">
+                <table class="day-table">
+                    <thead>
+                        <tr class="day-header"><th colspan="2">${dayName}</th></tr>
+                        <tr class="col-header"><th>Meal</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>`;
+            }
+
+            function renderMealPlan(text) {
+                const lines = text.split('\n');
+                const dayTables = [];
+                let currentDay = null;
+                let mealRows = [];
+
+                function flushDay() {
+                    if (currentDay && mealRows.length > 0) {
+                        dayTables.push(buildDayTable(currentDay, mealRows));
+                    }
+                    mealRows = [];
+                    currentDay = null;
+                }
+
+                for (const raw of lines) {
+                    const line = raw.trim();
+                    if (!line) continue;
+
+                    // Day header: ### Day 1 | Monday
+                    const dayMatch = line.match(/^###\s+Day\s+\d+\s*\|\s*(.+)/i);
+                    if (dayMatch) {
+                        flushDay();
+                        currentDay = dayMatch[1].trim();  // e.g. "Monday"
+                        continue;
+                    }
+
+                    // Meal row: BREAKFAST | full description text
+                    const mealMatch = line.match(/^(BREAKFAST|LUNCH|SNACKS?|DINNER)\s*\|\s*(.*)/i);
+                    if (mealMatch) {
+                        const key = mealMatch[1].toUpperCase();
+                        const label = MEAL_LABELS[key] || mealMatch[1];
+                        const desc = mealMatch[2].trim();
+                        mealRows.push({ label, desc });
+                        continue;
+                    }
+                }
+
+                flushDay(); // flush last day
+
+                if (dayTables.length === 0) {
+                    // Fallback plain text
+                    return '<pre style="white-space:pre-wrap;font-size:.85rem;line-height:1.6;">' +
+                        text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+                }
+
+                return '<div class="meal-grid">' + dayTables.join('') + '</div>';
+            }
+
+            function setStepActive(stepKey) {
+                const el = document.getElementById('step-' + stepKey);
+                const st = document.getElementById('status-' + stepKey);
+                if (!el) return;
+                el.classList.add('active');
+                el.classList.remove('done');
+                st.className = 'step-status running';
+                st.innerHTML = '<div class="mini-spin"></div> Processing...';
+            }
+
+            function setStepDone(stepKey) {
+                const el = document.getElementById('step-' + stepKey);
+                const st = document.getElementById('status-' + stepKey);
+                if (!el) return;
+                el.classList.remove('active');
+                el.classList.add('done');
+                st.className = 'step-status done';
+                st.innerHTML = 'Done ✓';
+            }
+
+            function onProgress(step) {
+                const idx = stepOrder[step];
+                STEPS.slice(0, idx).forEach(s => setStepDone(s));
+                setStepActive(step);
+            }
+
+            /* ── Markdown renderer ──────────────────────────────────── */
+            function renderMarkdown(md) {
+                return md
+                    .replace(/^#### (.+)$/gim, '<h4>$1</h4>')
+                    .replace(/^### (.+)$/gim, '<h3>$1</h3>')
+                    .replace(/^## (.+)$/gim, '<h2>$1</h2>')
+                    .replace(/^# (.+)$/gim, '<h1>$1</h1>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/^[-•] (.+)$/gim, '<li>$1</li>')
+                    .replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>')
+                    .replace(/\n{2,}/g, '</p><p>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/^(.)/, '<p>$1')
+                    .replace(/(.)$/, '$1</p>');
+            }
+
+            /* ── Form Submit ────────────────────────────────────────── */
+            form.addEventListener('submit', async e => {
+                e.preventDefault();
+
+                const requiredFields = form.querySelectorAll('[required]');
+                let isValid = true;
+                requiredFields.forEach(field => {
+                    if (!field.value) {
+                        field.classList.add('border-red-500');
+                        isValid = false;
+                    } else {
+                        field.classList.remove('border-red-500');
+                    }
+                });
+                if (!isValid) { alert('Please fill in all required fields'); return; }
+
+                /* Loading state */
+                generateBtn.disabled = true;
+                loadingSpinner.classList.remove('hidden');
+                btnLabel.textContent = 'Generating...';
+
+                resetTracker();
+                tracker.classList.add('visible');
+                resultDiv.style.display = 'none';
+                mealContent.innerHTML = '';
+                warningBox.style.display = 'none';
+
+                setTimeout(() => tracker.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+
+                /* Multipart FormData — supports PDF file upload */
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch('/generate-meal-plan', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let lastProgressStep = null;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            let event;
+                            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+
+                            switch (event.type) {
+                                case 'progress':
+                                    if (lastProgressStep) setStepDone(lastProgressStep);
+                                    lastProgressStep = event.step;
+                                    onProgress(event.step);
+                                    break;
+
+                                case 'revision':
+                                    revBanner.classList.add('visible');
+                                    setStepActive('generating_plan');
+                                    break;
+
+                                case 'meal_plan':
+                                    STEPS.forEach(s => setStepDone(s));
+                                    if (event.has_warnings) warningBox.style.display = 'block';
+                                    mealContent.innerHTML = renderMealPlan(event.content || 'No plan generated.');
+                                    resultDiv.style.display = 'block';
+                                    setTimeout(() => resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+                                    break;
+
+                                case 'error':
+                                    mealContent.innerHTML = `<div class="error-box"><strong>Error:</strong> ${event.message}</div>`;
+                                    resultDiv.style.display = 'block';
+                                    break;
+
+                                case 'done':
+                                    break;
+                            }
+                        }
+                    }
+
+                } catch (error) {
+                    mealContent.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">Error!</strong>
+                        <span class="block sm:inline"> Failed to generate meal plan. Make sure the Flask server is running.</span>
+                    </div>`;
+                    resultDiv.style.display = 'block';
+                } finally {
+                    generateBtn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    btnLabel.textContent = 'Generate Meal Plan';
+                }
+            });
+
+            /* Clear red borders on input */
+            form.querySelectorAll('input, select').forEach(el => {
+                el.addEventListener('change', () => el.classList.remove('border-red-500'));
+            });
+        })();
+    </script>
+
+</body>
+
+</html>
