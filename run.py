@@ -68,11 +68,9 @@ def resolve_best_groq_model() -> str:
 
         # Preferred models in priority order for 2026
         priority_models = [
-            "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
+            "openai/gpt-oss-120b",
             "qwen/qwen3.6-27b",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
         ]
         for candidate in priority_models:
             if candidate in available_ids:
@@ -87,11 +85,40 @@ def resolve_best_groq_model() -> str:
     except Exception as e:
         print(f"[Model Discovery] Warning: could not query Groq models API ({e}). Using default.")
 
-    return "openai/gpt-oss-120b"
+    return "openai/gpt-oss-20b"
+
+
+def extract_content(response) -> str:
+    """Extract clean string content from LLM response safely, handling reasoning models and multi-part content."""
+    if not response:
+        return ""
+
+    content = getattr(response, "content", "")
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                parts.append(part.get("text", ""))
+            else:
+                parts.append(str(part))
+        content = "".join(parts)
+    elif not isinstance(content, str):
+        content = str(content)
+
+    content = content.strip()
+
+    # Fallback to reasoning_content if content is empty (Groq reasoning models)
+    if not content and hasattr(response, "additional_kwargs"):
+        ak = response.additional_kwargs
+        reasoning = ak.get("reasoning_content") or ak.get("reasoning") or ak.get("thought")
+        if reasoning and isinstance(reasoning, str):
+            content = reasoning.strip()
+
+    return content
 
 
 class RobustChatGroq:
-    def __init__(self, temperature: float = 0.7, max_tokens: int = 4096, model: str = None):
+    def __init__(self, temperature: float = 0.7, max_tokens: int = 8192, model: str = None):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.model = model
@@ -103,8 +130,8 @@ class RobustChatGroq:
         # Modern Groq production model candidates
         pool = [
             self.model or resolve_best_groq_model(),
-            "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
+            "openai/gpt-oss-120b",
             "qwen/qwen3.6-27b",
         ]
         models_to_try = []
@@ -126,7 +153,11 @@ class RobustChatGroq:
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                 )
-                return llm.invoke(messages, **kwargs)
+                res = llm.invoke(messages, **kwargs)
+                extracted = extract_content(res)
+                if hasattr(res, "content") and not res.content and extracted:
+                    res.content = extracted
+                return res
             except Exception as e:
                 last_exception = e
                 error_str = str(e).lower()
@@ -168,7 +199,7 @@ class RobustChatGroq:
         raise last_exception
 
 def get_llm() -> RobustChatGroq:
-    return RobustChatGroq(temperature=0.7, max_tokens=4096)
+    return RobustChatGroq(temperature=0.7, max_tokens=8192)
 
 
 
@@ -371,7 +402,8 @@ Follow this exact pattern for Day 1 (Monday) through Day 7 (Sunday). Use pipe | 
         HumanMessage(content=user_content),
     ])
 
-    return {"meal_plan": response.content}
+    meal_plan_text = extract_content(response)
+    return {"meal_plan": meal_plan_text}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -605,7 +637,9 @@ def generate_meal_plan():
 
                         # 2. Track latest meal plan output
                         if "meal_plan" in updates:
-                            latest_meal_plan = updates["meal_plan"]
+                            plan_candidate = extract_content(updates["meal_plan"]) if not isinstance(updates["meal_plan"], str) else updates["meal_plan"].strip()
+                            if plan_candidate:
+                                latest_meal_plan = plan_candidate
 
                         # 3. Track validation and detect revision loops
                         if "validation_result" in updates:

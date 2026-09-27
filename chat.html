@@ -1067,20 +1067,21 @@
                     const line = raw.trim();
                     if (!line) continue;
 
-                    // Day header: ### Day 1 | Monday
-                    const dayMatch = line.match(/^###\s+Day\s+\d+\s*\|\s*(.+)/i);
+                    // Robust Day header match: ### Day 1 | Monday, ### Day 1: Monday, **Day 1: Monday**, etc.
+                    const dayMatch = line.match(/^#{1,4}\s*Day\s*\d+\s*[:|\-–—]?\s*(.+)/i) ||
+                                     line.match(/^\*\*Day\s*\d+\s*[:|\-–—]?\s*(.+?)\*\*/i);
                     if (dayMatch) {
                         flushDay();
-                        currentDay = dayMatch[1].trim();  // e.g. "Monday"
+                        currentDay = dayMatch[1].replace(/[\*#]/g, '').trim();
                         continue;
                     }
 
-                    // Meal row: BREAKFAST | full description text
-                    const mealMatch = line.match(/^(BREAKFAST|LUNCH|SNACKS?|DINNER)\s*\|\s*(.*)/i);
+                    // Robust Meal row match: BREAKFAST | text, **BREAKFAST**: text, - LUNCH | text
+                    const mealMatch = line.match(/^[\*\s\-•#]*(BREAKFAST|LUNCH|SNACKS?|DINNER)[\*\s]*[:|\|\-–—]\s*(.*)/i);
                     if (mealMatch) {
                         const key = mealMatch[1].toUpperCase();
                         const label = MEAL_LABELS[key] || mealMatch[1];
-                        const desc = mealMatch[2].trim();
+                        const desc = mealMatch[2].replace(/^[\*\s:]+/, '').trim();
                         mealRows.push({ label, desc });
                         continue;
                     }
@@ -1089,9 +1090,9 @@
                 flushDay(); // flush last day
 
                 if (dayTables.length === 0) {
-                    // Fallback plain text
-                    return '<pre style="white-space:pre-wrap;font-size:.85rem;line-height:1.6;">' +
-                        text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+                    // Fallback: if structured days couldn't be parsed, format as clean readable card
+                    return '<div class="p-6 bg-white rounded-xl shadow-md border border-gray-200 text-gray-800 leading-relaxed whitespace-pre-wrap font-sans text-sm">' +
+                        text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
                 }
 
                 return '<div class="meal-grid">' + dayTables.join('') + '</div>';
