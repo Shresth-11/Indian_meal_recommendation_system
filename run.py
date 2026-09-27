@@ -52,9 +52,10 @@ class MealPlanState(TypedDict):
 #    and retry backoff automatically.
 # ─────────────────────────────────────────────────────────────────────────────
 class RobustChatGroq:
-    def __init__(self, temperature: float = 0.7, max_tokens: int = 4096):
+    def __init__(self, temperature: float = 0.7, max_tokens: int = 4096, model: str = None):
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.model = model or os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     def invoke(self, messages, **kwargs):
         import time
@@ -63,12 +64,14 @@ class RobustChatGroq:
         attempts = 0
         max_attempts = 12
         last_exception = None
+        current_model = self.model
+        fallback_model = "llama-3.1-8b-instant"
         
         while attempts < max_attempts:
             try:
                 llm = ChatGroq(
                     api_key=GROQ_API_KEY,
-                    model="groq/compound",
+                    model=current_model,
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                 )
@@ -76,8 +79,24 @@ class RobustChatGroq:
             except Exception as e:
                 last_exception = e
                 error_str = str(e).lower()
+                
+                # Check for invalid/non-existent model
+                if "model_not_found" in error_str or "does not exist" in error_str:
+                    print(f"Warning: Model '{current_model}' not found. Falling back to '{fallback_model}'.")
+                    current_model = fallback_model
+                    attempts += 1
+                    time.sleep(1)
+                    continue
+
                 if "rate" in error_str or "429" in error_str or "limit" in error_str:
                     attempts += 1
+                    # If hitting limits repeatedly on 70b, fall back to lightweight 8b instant
+                    if attempts >= 2 and current_model != fallback_model:
+                        print(f"Rate limit hit. Switching model to '{fallback_model}' for higher throughput.")
+                        current_model = fallback_model
+                        time.sleep(1)
+                        continue
+
                     # Parse try again time if present, otherwise default to backoff
                     match = re.search(r"try again in (\d+\.?\d*)s", error_str)
                     if not match:

@@ -17,7 +17,7 @@ FiTFEAST is a state-of-the-art, personalized Indian meal recommendation web appl
 ## 🌟 Key Features
 
 * **Multi-Agent Orchestration**: Compiled state-graph workflow utilizing 4 specialised cooperative AI agents using **LangGraph**.
-* **Upgraded Model**: Powered by **`groq/compound`** (Groq's Compound AI System), which is optimized for complex reasoning, structural formatting, and high rate-limit thresholds.
+* **Upgraded Model**: Powered by **`llama-3.3-70b-versatile`** (with automatic fallback to `llama-3.1-8b-instant`), optimized for complex reasoning, structural formatting, and high rate-limit resilience.
 * **Graceful Rate-Limit Retries**: Backed by a robust request scheduler with regex wait parsing and exponential backoff to handle rate limits without application crashes.
 * **Medical Report Analysis (PDF)**: Securely extracts text from user-uploaded blood test results, prescriptions, or lab reports to dynamically adjust nutritional targets (truncated to 10k characters for stability).
 * **Authentic Indian Cuisine Enforced**: Strict system prompts enforce regional Indian cuisines (North Indian, South Indian, Gujarati, Bengali, Rajasthani, etc.) and filter out Western, Chinese, or fusion dishes.
@@ -61,7 +61,7 @@ graph TD
 | **Backend Framework** | Flask (Python) | Server routing, file upload handling, and SSE stream API. |
 | **AI Orchestration** | LangGraph | State machine architecture managing the sequence of agents and revision loops. |
 | **LLM Provider** | Groq API | High-speed orchestrated model execution. |
-| **Active Model** | `groq/compound` | Groq's high-speed Compound AI System. |
+| **Active Model** | `llama-3.3-70b-versatile` | State-of-the-art Meta Llama model on Groq with fallback. |
 | **PDF Extraction** | PyPDF | Local, secure text extraction from medical documents. |
 
 ---
