@@ -17,7 +17,7 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY not found. Please set it in your .env file.")
+    raise ValueError("GROQ_API_KEY not found. Please set it in your .env file or cloud environment/secrets.")
 
 # ── Flask app — template_folder points to project root where chat.html lives ─
 app = Flask(__name__, template_folder=".")
@@ -582,4 +582,5 @@ def generate_meal_plan():
 
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    app.run(debug=True, threaded=True)
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

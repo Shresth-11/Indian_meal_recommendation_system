@@ -1,3 +1,13 @@
+---
+title: FiTFEAST Indian Meal Recommendation System
+emoji: 🍛
+colorFrom: green
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # FiTFEAST — AI Indian Meal Recommendation System 🇮🇳
 
 FiTFEAST is a state-of-the-art, personalized Indian meal recommendation web application. Powered by a **multi-agent LangGraph orchestrator** and the **Groq API**, the system ingests user metrics (Age, Gender, Weight, Height, Health Conditions, Allergies, and Diet Preferences), parses uploaded medical report PDFs, designs a custom 7-day Indian meal plan, and validates it for clinical safety.
@@ -103,11 +113,26 @@ graph TD
 
 ---
 
-## ☁️ Deployment on Render
+## ☁️ Deployment
 
-This project is configured to deploy directly to **Render** as a Python Web Service.
+### Option 1: Hugging Face Spaces (Recommended Free Host)
+This repository includes a pre-configured `Dockerfile` for Hugging Face Spaces:
+1. Create a new Space on [Hugging Face Spaces](https://huggingface.co/new-space).
+2. Select **Docker** as the Space SDK (Blank).
+3. Set your Space to **Public**.
+4. In Space **Settings** -> **Variables and secrets**, add a new secret:
+   - Name: `GROQ_API_KEY`
+   - Value: `gsk_your_groq_api_key_here`
+5. Push this repository to your Space:
+   ```bash
+   git remote add space https://huggingface.co/spaces/<YOUR_HF_USERNAME>/<YOUR_SPACE_NAME>
+   git push space main
+   ```
+
+### Option 2: Render
+This project can also be deployed directly to **Render** as a Python Web Service.
 
 * **Runtime/Language**: `Python 3`
 * **Build Command**: `pip install -r requirements.txt`
 * **Start Command**: `gunicorn run:app`
-* **Environment Variables**: Add your `GROQ_API_KEY` under Render's Environment tab.
+* **Environment Variables**: Add `GROQ_API_KEY` under Render's Environment tab.
