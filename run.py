@@ -51,41 +51,8 @@ class MealPlanState(TypedDict):
 #    A robust wrapper class that handles random key rotation, rate-limiting (429),
 #    and retry backoff automatically.
 # ─────────────────────────────────────────────────────────────────────────────
-def resolve_best_groq_model() -> str:
-    """
-    Dynamically discover active models on Groq for the user's API key.
-    Ensures compatibility across free/developer tiers and model lifecycle changes.
-    """
-    env_model = os.getenv("GROQ_MODEL")
-    if env_model:
-        return env_model
-
-    try:
-        from groq import Groq
-        client = Groq(api_key=GROQ_API_KEY)
-        models = client.models.list()
-        available_ids = {m.id for m in models.data}
-
-        # Preferred models in priority order for 2026
-        priority_models = [
-            "openai/gpt-oss-20b",
-            "openai/gpt-oss-120b",
-            "qwen/qwen3.6-27b",
-        ]
-        for candidate in priority_models:
-            if candidate in available_ids:
-                print(f"[Model Discovery] Selected active Groq model: {candidate}")
-                return candidate
-
-        # Any available chat/text model
-        for m_id in available_ids:
-            if not any(skip in m_id.lower() for skip in ["whisper", "guard", "embed", "tts", "safeguard"]):
-                print(f"[Model Discovery] Fallback to available Groq model: {m_id}")
-                return m_id
-    except Exception as e:
-        print(f"[Model Discovery] Warning: could not query Groq models API ({e}). Using default.")
-
-    return "openai/gpt-oss-20b"
+# ── Strictly use openai/gpt-oss-120b model ────────────────────────────────────
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def extract_content(response) -> str:
@@ -118,38 +85,24 @@ def extract_content(response) -> str:
 
 
 class RobustChatGroq:
-    def __init__(self, temperature: float = 0.7, max_tokens: int = 8192, model: str = None):
+    def __init__(self, temperature: float = 0.7, max_tokens: int = 8192):
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.model = model
+        self.model = MODEL_NAME
 
     def invoke(self, messages, **kwargs):
         import time
         import re
 
-        # Modern Groq production model candidates
-        pool = [
-            self.model or resolve_best_groq_model(),
-            "openai/gpt-oss-20b",
-            "openai/gpt-oss-120b",
-            "qwen/qwen3.6-27b",
-        ]
-        models_to_try = []
-        for m in pool:
-            if m and m not in models_to_try:
-                models_to_try.append(m)
-
-        model_idx = 0
         attempts = 0
-        max_attempts = 12
+        max_attempts = 15
         last_exception = None
 
-        while attempts < max_attempts and model_idx < len(models_to_try):
-            current_model = models_to_try[model_idx]
+        while attempts < max_attempts:
             try:
                 llm = ChatGroq(
                     api_key=GROQ_API_KEY,
-                    model=current_model,
+                    model=self.model,
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                 )
@@ -162,39 +115,26 @@ class RobustChatGroq:
                 last_exception = e
                 error_str = str(e).lower()
 
-                # If model not found or no access, immediately try next model in the pool
-                if "model_not_found" in error_str or "does not exist" in error_str or "not have access" in error_str:
-                    print(f"Warning: Model '{current_model}' not accessible on Groq. Trying next candidate...")
-                    model_idx += 1
-                    attempts += 1
-                    time.sleep(1)
-                    continue
-
+                # If rate-limited (429), respect Groq's wait window and retry openai/gpt-oss-120b
                 if "rate" in error_str or "429" in error_str or "limit" in error_str:
                     attempts += 1
-                    # Switch to lighter model on persistent rate limits
-                    if attempts >= 2 and model_idx < len(models_to_try) - 1:
-                        print(f"Rate limit on '{current_model}'. Switching to '{models_to_try[model_idx + 1]}'...")
-                        model_idx += 1
-                        time.sleep(1)
-                        continue
-
-                    # Parse try again time if present
-                    match = re.search(r"try again in (\d+\.?\d*)s", error_str)
+                    match = re.search(r"try again in ([\d\.]+)s", error_str)
                     if not match:
-                        match = re.search(r"try again in (\d+\.?\d*) second", error_str)
+                        match = re.search(r"try again in ([\d\.]+) second", error_str)
 
                     if match:
-                        wait_time = float(match.group(1)) + 1.5
+                        wait_time = float(match.group(1)) + 2.0
                     else:
-                        wait_time = (2 ** attempts) + 2.0
+                        wait_time = (2 ** min(attempts, 4)) + 3.0
 
-                    wait_time = max(wait_time, 4.0)
-                    wait_time = min(wait_time, 25.0)
+                    wait_time = max(wait_time, 5.0)
+                    print(f"Rate limit on {self.model}. Waiting {wait_time:.1f}s before retry ({attempts}/{max_attempts})...")
                     time.sleep(wait_time)
-                else:
-                    attempts += 1
-                    time.sleep(2)
+                    continue
+
+                # General network or temporary error
+                attempts += 1
+                time.sleep(3)
 
         raise last_exception
 
