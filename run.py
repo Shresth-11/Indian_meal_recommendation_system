@@ -51,8 +51,9 @@ class MealPlanState(TypedDict):
 #    A robust wrapper class that handles random key rotation, rate-limiting (429),
 #    and retry backoff automatically.
 # ─────────────────────────────────────────────────────────────────────────────
-# ── Strictly use openai/gpt-oss-120b model ────────────────────────────────────
-MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+# ── Default to high-speed openai/gpt-oss-20b (1,000 tok/sec) ─────────────────
+# Can be overridden via GROQ_MODEL environment variable in Render
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 
 def extract_content(response) -> str:
@@ -85,7 +86,7 @@ def extract_content(response) -> str:
 
 
 class RobustChatGroq:
-    def __init__(self, temperature: float = 0.7, max_tokens: int = 8192):
+    def __init__(self, temperature: float = 0.6, max_tokens: int = 4096):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.model = MODEL_NAME
@@ -95,16 +96,18 @@ class RobustChatGroq:
         import re
 
         attempts = 0
-        max_attempts = 15
+        max_attempts = 10
         last_exception = None
 
         while attempts < max_attempts:
             try:
+                # Use reasoning_effort=low to prevent long thinking loops
                 llm = ChatGroq(
                     api_key=GROQ_API_KEY,
                     model=self.model,
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
+                    model_kwargs={"reasoning_effort": "low"},
                 )
                 res = llm.invoke(messages, **kwargs)
                 extracted = extract_content(res)
@@ -115,7 +118,7 @@ class RobustChatGroq:
                 last_exception = e
                 error_str = str(e).lower()
 
-                # If rate-limited (429), respect Groq's wait window and retry openai/gpt-oss-120b
+                # If rate-limited (429), respect Groq's wait window
                 if "rate" in error_str or "429" in error_str or "limit" in error_str:
                     attempts += 1
                     match = re.search(r"try again in ([\d\.]+)s", error_str)
@@ -123,23 +126,39 @@ class RobustChatGroq:
                         match = re.search(r"try again in ([\d\.]+) second", error_str)
 
                     if match:
-                        wait_time = float(match.group(1)) + 2.0
+                        wait_time = float(match.group(1)) + 1.5
                     else:
-                        wait_time = (2 ** min(attempts, 4)) + 3.0
+                        wait_time = 4.0
 
-                    wait_time = max(wait_time, 5.0)
+                    wait_time = min(wait_time, 15.0)
                     print(f"Rate limit on {self.model}. Waiting {wait_time:.1f}s before retry ({attempts}/{max_attempts})...")
                     time.sleep(wait_time)
                     continue
 
-                # General network or temporary error
+                # If model_kwargs was rejected, retry without it
+                if "reasoning_effort" in error_str:
+                    try:
+                        llm_fallback = ChatGroq(
+                            api_key=GROQ_API_KEY,
+                            model=self.model,
+                            temperature=self.temperature,
+                            max_tokens=self.max_tokens,
+                        )
+                        res = llm_fallback.invoke(messages, **kwargs)
+                        extracted = extract_content(res)
+                        if hasattr(res, "content") and not res.content and extracted:
+                            res.content = extracted
+                        return res
+                    except Exception as fallback_err:
+                        last_exception = fallback_err
+
                 attempts += 1
-                time.sleep(3)
+                time.sleep(2)
 
         raise last_exception
 
 def get_llm() -> RobustChatGroq:
-    return RobustChatGroq(temperature=0.7, max_tokens=8192)
+    return RobustChatGroq(temperature=0.6, max_tokens=4096)
 
 
 
