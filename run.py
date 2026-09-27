@@ -51,23 +51,74 @@ class MealPlanState(TypedDict):
 #    A robust wrapper class that handles random key rotation, rate-limiting (429),
 #    and retry backoff automatically.
 # ─────────────────────────────────────────────────────────────────────────────
+def resolve_best_groq_model() -> str:
+    """
+    Dynamically discover active models on Groq for the user's API key.
+    Ensures compatibility across free/developer tiers and model lifecycle changes.
+    """
+    env_model = os.getenv("GROQ_MODEL")
+    if env_model:
+        return env_model
+
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        models = client.models.list()
+        available_ids = {m.id for m in models.data}
+
+        # Preferred models in priority order for 2026
+        priority_models = [
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.6-27b",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+        ]
+        for candidate in priority_models:
+            if candidate in available_ids:
+                print(f"[Model Discovery] Selected active Groq model: {candidate}")
+                return candidate
+
+        # Any available chat/text model
+        for m_id in available_ids:
+            if not any(skip in m_id.lower() for skip in ["whisper", "guard", "embed", "tts", "safeguard"]):
+                print(f"[Model Discovery] Fallback to available Groq model: {m_id}")
+                return m_id
+    except Exception as e:
+        print(f"[Model Discovery] Warning: could not query Groq models API ({e}). Using default.")
+
+    return "openai/gpt-oss-120b"
+
+
 class RobustChatGroq:
     def __init__(self, temperature: float = 0.7, max_tokens: int = 4096, model: str = None):
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.model = model or os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        self.model = model
 
     def invoke(self, messages, **kwargs):
         import time
         import re
-        
+
+        # Modern Groq production model candidates
+        pool = [
+            self.model or resolve_best_groq_model(),
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.6-27b",
+        ]
+        models_to_try = []
+        for m in pool:
+            if m and m not in models_to_try:
+                models_to_try.append(m)
+
+        model_idx = 0
         attempts = 0
         max_attempts = 12
         last_exception = None
-        current_model = self.model
-        fallback_model = "llama-3.1-8b-instant"
-        
-        while attempts < max_attempts:
+
+        while attempts < max_attempts and model_idx < len(models_to_try):
+            current_model = models_to_try[model_idx]
             try:
                 llm = ChatGroq(
                     api_key=GROQ_API_KEY,
@@ -79,44 +130,41 @@ class RobustChatGroq:
             except Exception as e:
                 last_exception = e
                 error_str = str(e).lower()
-                
-                # Check for invalid/non-existent model
-                if "model_not_found" in error_str or "does not exist" in error_str:
-                    print(f"Warning: Model '{current_model}' not found. Falling back to '{fallback_model}'.")
-                    current_model = fallback_model
+
+                # If model not found or no access, immediately try next model in the pool
+                if "model_not_found" in error_str or "does not exist" in error_str or "not have access" in error_str:
+                    print(f"Warning: Model '{current_model}' not accessible on Groq. Trying next candidate...")
+                    model_idx += 1
                     attempts += 1
                     time.sleep(1)
                     continue
 
                 if "rate" in error_str or "429" in error_str or "limit" in error_str:
                     attempts += 1
-                    # If hitting limits repeatedly on 70b, fall back to lightweight 8b instant
-                    if attempts >= 2 and current_model != fallback_model:
-                        print(f"Rate limit hit. Switching model to '{fallback_model}' for higher throughput.")
-                        current_model = fallback_model
+                    # Switch to lighter model on persistent rate limits
+                    if attempts >= 2 and model_idx < len(models_to_try) - 1:
+                        print(f"Rate limit on '{current_model}'. Switching to '{models_to_try[model_idx + 1]}'...")
+                        model_idx += 1
                         time.sleep(1)
                         continue
 
-                    # Parse try again time if present, otherwise default to backoff
+                    # Parse try again time if present
                     match = re.search(r"try again in (\d+\.?\d*)s", error_str)
                     if not match:
                         match = re.search(r"try again in (\d+\.?\d*) second", error_str)
-                    
+
                     if match:
                         wait_time = float(match.group(1)) + 1.5
                     else:
-                        wait_time = (2 ** attempts) + 3.0
-                        
-                    # Enforce a minimum wait of 5 seconds to let the rolling window clear
-                    wait_time = max(wait_time, 5.0)
-                    # Cap wait time to 30 seconds
-                    wait_time = min(wait_time, 30.0)
+                        wait_time = (2 ** attempts) + 2.0
+
+                    wait_time = max(wait_time, 4.0)
+                    wait_time = min(wait_time, 25.0)
                     time.sleep(wait_time)
                 else:
-                    # Non-rate-limit error: wait 2s and try again
                     attempts += 1
                     time.sleep(2)
-                    
+
         raise last_exception
 
 def get_llm() -> RobustChatGroq:
