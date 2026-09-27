@@ -157,8 +157,8 @@ class RobustChatGroq:
 
         raise last_exception
 
-def get_llm() -> RobustChatGroq:
-    return RobustChatGroq(temperature=0.6, max_tokens=4096)
+def get_llm(max_tokens: int = 2500, temperature: float = 0.6) -> RobustChatGroq:
+    return RobustChatGroq(temperature=temperature, max_tokens=max_tokens)
 
 
 
@@ -168,7 +168,7 @@ def get_llm() -> RobustChatGroq:
 #    Outputs: dietary constraints mapped to Indian food context.
 # ─────────────────────────────────────────────────────────────────────────────
 def analyze_medical_report(state: MealPlanState) -> dict:
-    llm = get_llm()
+    llm = get_llm(max_tokens=1000)
 
     system_prompt = """You are a medical dietitian AI specializing in Indian dietary patterns.
 Analyze the patient's health information and any provided medical report text.
@@ -211,7 +211,7 @@ Analyze the above and provide precise dietary constraints using Indian food cont
 #    Frames targets using Indian food groups.
 # ─────────────────────────────────────────────────────────────────────────────
 def calculate_nutrition(state: MealPlanState) -> dict:
-    llm = get_llm()
+    llm = get_llm(max_tokens=800)
 
     system_prompt = """You are an expert sports nutritionist and dietitian specializing in Indian dietary patterns.
 Calculate precise daily nutritional requirements using the Mifflin-St Jeor BMR equation:
@@ -269,7 +269,7 @@ Calculate personalized daily nutrition targets with Indian food group context.""
 #    On revision: reads validation_result and fixes specific issues.
 # ─────────────────────────────────────────────────────────────────────────────
 def generate_meal_plan_node(state: MealPlanState) -> dict:
-    llm = get_llm()
+    llm = get_llm(max_tokens=2500)
 
     # Build revision context if this is a retry
     revision_context = ""
@@ -371,7 +371,7 @@ Follow this exact pattern for Day 1 (Monday) through Day 7 (Sunday). Use pipe | 
 #    Routes back to Generator if issues found (max 2 retries).
 # ─────────────────────────────────────────────────────────────────────────────
 def validate_meal_plan(state: MealPlanState) -> dict:
-    llm = get_llm()
+    llm = get_llm(max_tokens=500)
 
     system_prompt = """You are a strict meal plan auditor for an Indian nutrition system.
 You perform THREE checks on every meal plan submitted to you.
